@@ -1,0 +1,5 @@
+dna-spaces no data between:
+start time:  2023-06-24 14:00:00
+end time:    2023-07-11 12:00:00
+
+17 days.
