@@ -232,7 +232,15 @@ def get_data(building_id, floor_id, interval_list):
             continue
 
         # Assign column names
-        columns=['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z','aa','ab','ac','ad','ae','af','ag']
+        #columns=['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z','aa','ab','ac','ad','ae','af','ag']
+        columns = [
+            'tenantid', 'macaddress', 'devicetype', 'campusid', 'buildingid', 'floorid', 
+            'floorhierarchy', 'coordinatex', 'coordinatey', 'sourcetimestamp', 'maxdetectedapmac', 
+            'maxdetectedband', 'detectingcontrollers', 'firstactiveat', 'locatedsinceactivecount', 
+            'changedon', 'manufacturer', 'associated', 'maxdetectedrssi', 'ssid', 'username', 
+            'associatedapmac', 'associatedaprssi', 'maxdetectedslot', 'ipaddress', 'staticdevice', 
+            'recordtype', 'computetype', 'source', 'machashed', 'policyname', 'udid', 'hierarchy_id'
+        ]
 
         data_all = str(decompressed_data,'utf-8')
         decompressed_data = None
@@ -282,7 +290,15 @@ def get_data_norange(building_id, floor_id):
         print(f"Response Content: {response.content}")
 
     # Assign column names
-    columns=['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z','aa','ab','ac','ad','ae','af','ag']
+    #columns=['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z','aa','ab','ac','ad','ae','af','ag']
+    columns = [
+            'tenantid', 'macaddress', 'devicetype', 'campusid', 'buildingid', 'floorid', 
+            'floorhierarchy', 'coordinatex', 'coordinatey', 'sourcetimestamp', 'maxdetectedapmac', 
+            'maxdetectedband', 'detectingcontrollers', 'firstactiveat', 'locatedsinceactivecount', 
+            'changedon', 'manufacturer', 'associated', 'maxdetectedrssi', 'ssid', 'username', 
+            'associatedapmac', 'associatedaprssi', 'maxdetectedslot', 'ipaddress', 'staticdevice', 
+            'recordtype', 'computetype', 'source', 'machashed', 'policyname', 'udid', 'hierarchy_id'
+        ]
 
     data_all = str(decompressed_data,'utf-8')
     decompressed_data = None
@@ -305,7 +321,8 @@ def save_to_csv(data, filename,  sort=True):
         
     if sort:
         # sort by column 'j' timestamp
-        data = data.sort_values(by='j')
+        #data = data.sort_values(by='j')
+        data = data.sort_values(by='sourcetimestamp')
 
     # Create a Pandas dataframe from the data
     df = pd.DataFrame(data)
