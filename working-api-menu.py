@@ -1,6 +1,6 @@
 # written by: Andrew McDonald
-# current: 17/07/23
-# version: 0.5
+# current: 16/07/24
+# version: 0.6
 
 import requests
 from requests.structures import CaseInsensitiveDict
@@ -23,7 +23,7 @@ headers["Accept"] = "*/*"
 headers["Accept-Encoding"] = "gzip, deflate, br"
 headers["Connection"] = "keep-alive"
 headers["Content-Type"] = "application/json"
-headers["Authorization"] = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYnkiOiJMb2NhdGlvbiIsInR5cGUiOiJCZWFyZXIiLCJ0ZW5hbnRJZCI6MTY3NjgsInVzZXJuYW1lIjoiYW5kcmV3Lm1jZG9uYWxkQGxhdHJvYmUuZWR1LmF1Iiwia2V5SWQiOiJmOGJhZTEyMi1hNTgzLTRjMmYtYjEwYS0yMTQ2M2NjNjY0ZDIiLCJ1c2VySWQiOjM5ODk2LCJpYXQiOjE2ODE3MDQ5NjQsImV4cCI6MTcxMzI0MDk2M30.c4OZHpP8-dsvPmhXiJNuLLLzGVr4JjZ2wm0AtqkNReA"
+headers["Authorization"] = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYnkiOiJMb2NhdGlvbiIsInR5cGUiOiJCZWFyZXIiLCJ0ZW5hbnRJZCI6MTY3NjgsInVzZXJuYW1lIjoiYW5kcmV3Lm1jZG9uYWxkQGxhdHJvYmUuZWR1LmF1Iiwia2V5SWQiOiI2YTg2ZjIxOC0wZDEzLTQ0ZDgtYjE4NC1jYWZhNzY2OTExN2QiLCJ1c2VySWQiOjM5ODk2LCJpYXQiOjE3MjEwOTAxNDEsImV4cCI6MTc1MjYyNjE0MX0.zYaUYgMDv1dgeFHzm-MeU7s8xmwytw1IyxPx-GV3NvU"
 
 
 ## ===============================================================
@@ -162,7 +162,7 @@ def create_floor_dictionary(campus_name):
                 'img_height': floor_map['details']['image']['height'],
                 'height': floor_map['details']['height'],
                 'gps_markers': floor_map['details']['gpsMarkers'],
-                'calibration_model': floor_map['details']['calibrationModel']
+                #'calibration_model': floor_map['details']['calibrationModel']
             }
 
     return building_dict, floors_dict
@@ -245,6 +245,55 @@ def get_data(building_id, floor_id, interval_list):
 
     return all_data
 
+
+def get_data_norange(building_id, floor_id):
+    url = f"https://dnaspaces.io/api/location/v1/history/records/"
+
+    # example time range - this should be true!
+    # 1669510800000 = Sun Nov 27 2022 12:00:00 GMT+1100 (Australian Eastern Daylight Time)
+    # 1669514400000 = Sun Nov 27 2022 13:00:00 GMT+1100 (Australian Eastern Daylight Time)
+
+    # disable chained assignments
+    pd.options.mode.chained_assignment = None
+    
+    data_all = None
+    df1 = pd.DataFrame()
+    all_data = pd.DataFrame()
+        
+    query = {
+        'buildingId': f'{building_id}',
+        'floorId': f'{floor_id}',
+        #'deviceType':'CLIENT',
+    }
+
+    response = requests.get(url, headers=headers, params=query)
+
+    try:
+        response.raise_for_status()
+    except requests.exceptions.HTTPError as err:
+        print(f"HTTP Error occurred: {err}")
+        print(f"Response Content: {response.text}")
+    
+    try:
+        decompressed_data = zlib.decompress(response.content, zlib.MAX_WBITS|16)
+        # Process the decompressed data and append it to the appropriate dataframes
+    except zlib.error as err:
+        print(f"Decompression Error: {err}")
+        print(f"Response Content: {response.content}")
+
+    # Assign column names
+    columns=['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z','aa','ab','ac','ad','ae','af','ag']
+
+    data_all = str(decompressed_data,'utf-8')
+    decompressed_data = None
+
+    data = StringIO(data_all) 
+    df1 = pd.read_csv(data, names=columns)
+
+    # concatenate with previous data
+    all_data = pd.concat([all_data, df1])
+
+    return all_data
 
 ## ===============================================================
 ## Save data to csv function
@@ -342,6 +391,13 @@ def main():
     
     # Get user input for filename
     filename = input('\nEnter filename to save data to: ')
+
+    # Set default filename with the current date if no filename is provided
+    if not filename:
+        current_date = datetime.now().strftime('%Y-%m-%d')
+        filename = f"spaces_data_{current_date}.csv" # Example: spaces_data_2023-07-26.csv
+
+    print(f"Data will be saved to: {filename}")
     
     # Create interval list
     #interval_list = create_time_interval(interval_num, interval_length)
@@ -361,24 +417,27 @@ def main():
                     # interval_list)
                     
     print('\n=== Data history length ===')
+    print(' enter nothing if just wanting the latest 24hr data...')
 
     start_date = input('\nEnter the start date (YYYY-MM-DD): ')
     end_date = input('Enter the end date (YYYY-MM-DD): ')
 
-    if start_date == end_date:
-        interval_list = create_date_interval(start_date, start_date)
+    if start_date and end_date:
+        if start_date == end_date:
+            interval_list = create_date_interval(start_date, start_date)  # This creates an interval for a single day
+        else:
+            interval_list = create_date_interval(start_date, end_date)  # This creates intervals for the range
+
+        # Print the intervals for verification
+        print(interval_list)
+        
+        # Fetch data for the given intervals
+        data = get_data(building_dict[selected_building], selected_floor_id, interval_list)
     else:
-        interval_list = create_date_interval(start_date, end_date)
-
-    print(interval_list)
-
-    # Call get_data function with selected building and floor
-    data = get_data(building_dict[selected_building],
-                    selected_floor_id,
-                    #len(interval_list),
-                    interval_list)
+        print("No date provided, fetching the most recent data...")
+        data = get_data_norange(building_dict[selected_building], selected_floor_id)
                     
-    print(tabulate(data.iloc[:10, :6], headers='keys', tablefmt='psql'))
+    #print(tabulate(data.iloc[:10, :6], headers='keys', tablefmt='psql'))
     
     # Export data to CSV
     try:
